@@ -6,10 +6,21 @@ from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
 from datetime import datetime
 import os
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 # FastAPI app
 app = FastAPI()
 
+# Serve static files (e.g., CSS, JS, images)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("static/index.html", "r") as file:
+        return file.read()
+    
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
 engine = create_engine(DATABASE_URL)

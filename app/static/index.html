@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Frontend</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    input, button {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Register</h1>
+  <div>
+    <label>Email:</label>
+    <input type="email" id="email" placeholder="Enter your email">
+  </div>
+  <div>
+    <label>Password:</label>
+    <input type="password" id="password" placeholder="Enter your password">
+  </div>
+  <button onclick="registerUser()">Register</button>
+  <div id="message"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    async function registerUser() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const response = await axios.post('http://localhost:8000/register', {
+          email,
+          password,
+        });
+        document.getElementById('message').innerText = `User registered successfully: ${response.data.email}`;
+      } catch (error) {
+        document.getElementById('message').innerText = `Error: ${error.response.data.detail}`;
+      }
+    }
+  </script>
+</body>
+</html>

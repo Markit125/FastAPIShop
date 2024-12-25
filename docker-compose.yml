@@ -17,8 +17,8 @@ services:
       - ./app:/app
     ports:
       - "8000:80"
-    environment:
-      DATABASE_URL: postgresql://postgres:password@db/shop
+    env_file:
+      - .env
     depends_on:
       - db
 

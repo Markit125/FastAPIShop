@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,11 +10,14 @@
       font-family: Arial, sans-serif;
       margin: 20px;
     }
-    input, button {
+
+    input,
+    button {
       margin: 5px 0;
     }
   </style>
 </head>
+
 <body>
   <h1>Register</h1>
   <div>
@@ -39,10 +43,12 @@
           password,
         });
         document.getElementById('message').innerText = `User registered successfully: ${response.data.email}`;
+        window.location.href = '/login';
       } catch (error) {
         document.getElementById('message').innerText = `Error: ${error.response.data.detail}`;
       }
     }
   </script>
 </body>
+
 </html>

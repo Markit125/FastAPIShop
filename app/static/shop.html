@@ -68,25 +68,13 @@
         let cartTotal = 0;
         let userId = null; // Store the logged-in user's ID
 
-        // Load the user's cart from the backend
-        async function loadCart() {
-            if (!userId) return; // No user logged in
-
-            try {
-                const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
-                cartItems = response.data.map(item => ({
-                    name: item.name,
-                    price: item.price,
-                    productId: item.product_id,
-                }));
-                updateCart();
-            } catch (error) {
-                console.error('Error loading cart:', error);
-            }
+        function saveCartToLocalStorage() {
+            console.log("Saving cart to localStorage...");
+            localStorage.setItem('cartItems', JSON.stringify(cartItems));
         }
 
-        // Add an item to the user's cart
         async function addToCart(itemName, price, productId) {
+            console.log("Adding to cart...");
             if (!userId) {
                 alert('Please log in to add items to your cart.');
                 return;
@@ -99,15 +87,43 @@
                 }, {
                     params: { user_id: userId },
                 });
+
+                // Add the item to the cartItems array
                 cartItems.push({ name: itemName, price: price, productId: productId });
+                saveCartToLocalStorage(); // Save to localStorage
                 updateCart();
             } catch (error) {
                 console.error('Error adding item to cart:', error);
             }
+            console.log("Cart items:", cartItems);
+        }
+
+        async function loadCart() {
+            console.log("Loading cart...");
+            if (!userId) return; // No user logged in
+
+            try {
+                const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
+                console.log("Cart response:", response.data); // Debugging: Log the response
+
+                // Map the response data to the cartItems array
+                cartItems = response.data.map(item => ({
+                    name: item.name,       // Ensure this matches the backend response
+                    price: item.price,     // Ensure this matches the backend response
+                    productId: item.product_id,
+                }));
+
+                saveCartToLocalStorage(); // Save to localStorage
+                updateCart(); // Update the cart display
+            } catch (error) {
+                console.error('Error loading cart:', error);
+            }
+            console.log("Cart items:", cartItems);
         }
 
         // Update the cart display
         function updateCart() {
+            console.log("Updating cart...");
             const cartItemsList = document.getElementById('cart-items');
             const cartTotalElement = document.getElementById('cart-total');
 
@@ -115,6 +131,12 @@
             cartTotal = 0;
 
             cartItems.forEach(item => {
+                if (!item.name || !item.price) {
+                    console.error('Invalid cart item:', item);
+                    // localStorage.removeItem('cartItems');
+                    return; // Skip invalid items
+                }
+
                 const li = document.createElement('li');
                 li.textContent = `${item.name} - ₽${item.price}`;
                 cartItemsList.appendChild(li);
@@ -127,6 +149,7 @@
 
         // Fetch shop items when the page loads
         async function fetchShopItems() {
+            console.log("Fetching shop items...");
             try {
                 const response = await axios.get('http://localhost:8000/products');
                 const items = response.data;
@@ -138,6 +161,7 @@
 
         // Display shop items
         function displayShopItems(items) {
+            console.log("Displaying shop items...");
             const shopItemsContainer = document.getElementById('shop-items');
             shopItemsContainer.innerHTML = ''; // Clear previous items
 
@@ -154,15 +178,27 @@
 
         // Simulate user login (replace with actual login logic)
         function loginUser(id) {
+            console.log("Simulating user login...");
             userId = id;
             loadCart(); // Load the user's cart after login
         }
 
+        
+        function loadCartFromLocalStorage() {
+            console.log("Loading cart from localStorage...");
+            const savedCartItems = localStorage.getItem('cartItems');
+            if (savedCartItems) {
+                cartItems = JSON.parse(savedCartItems);
+                updateCart(); // Update the cart display
+            }
+        }
+        
         // Example: Simulate a user logging in with ID 1
         loginUser(1);
 
-        // Fetch shop items when the page loads
         fetchShopItems();
+        // Load cart items from localStorage when the page loads
+        loadCartFromLocalStorage();
     </script>
 </body>
 

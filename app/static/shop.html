@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -46,68 +47,123 @@
         }
     </style>
 </head>
+
 <body>
     <h1>Shop</h1>
 
     <!-- Shop Items -->
-    <div id="shop-items">
-        <div class="item">
-            <span>Item 1 - $10</span>
-            <button onclick="addToCart('Item 1', 10)">Add to Cart</button>
-        </div>
-        <div class="item">
-            <span>Item 2 - $20</span>
-            <button onclick="addToCart('Item 2', 20)">Add to Cart</button>
-        </div>
-        <div class="item">
-            <span>Item 3 - $30</span>
-            <button onclick="addToCart('Item 3', 30)">Add to Cart</button>
-        </div>
-    </div>
+    <div id="shop-items"></div>
 
     <!-- Shopping Cart -->
     <div class="cart">
         <h2>Shopping Cart</h2>
         <ul id="cart-items"></ul>
-        <p>Total: <span id="cart-total">$0</span></p>
+        <p>Total: <span id="cart-total">₽0</span></p>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         // Cart items and total
-        const cartItems = [];
+        let cartItems = [];
         let cartTotal = 0;
+        let userId = null; // Store the logged-in user's ID
 
-        // Function to add an item to the cart
-        function addToCart(itemName, price) {
-            // Add the item to the cart
-            cartItems.push({ name: itemName, price: price });
+        // Load the user's cart from the backend
+        async function loadCart() {
+            if (!userId) return; // No user logged in
 
-            // Update the cart display
-            updateCart();
+            try {
+                const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
+                cartItems = response.data.map(item => ({
+                    name: item.name,
+                    price: item.price,
+                    productId: item.product_id,
+                }));
+                updateCart();
+            } catch (error) {
+                console.error('Error loading cart:', error);
+            }
         }
 
-        // Function to update the cart display
+        // Add an item to the user's cart
+        async function addToCart(itemName, price, productId) {
+            if (!userId) {
+                alert('Please log in to add items to your cart.');
+                return;
+            }
+
+            try {
+                const response = await axios.post('http://localhost:8000/cart/items', {
+                    product_id: productId,
+                    quantity: 1,
+                }, {
+                    params: { user_id: userId },
+                });
+                cartItems.push({ name: itemName, price: price, productId: productId });
+                updateCart();
+            } catch (error) {
+                console.error('Error adding item to cart:', error);
+            }
+        }
+
+        // Update the cart display
         function updateCart() {
             const cartItemsList = document.getElementById('cart-items');
             const cartTotalElement = document.getElementById('cart-total');
 
-            // Clear the cart display
             cartItemsList.innerHTML = '';
             cartTotal = 0;
 
-            // Add each item to the cart display
             cartItems.forEach(item => {
                 const li = document.createElement('li');
-                li.textContent = `${item.name} - $${item.price}`;
+                li.textContent = `${item.name} - ₽${item.price}`;
                 cartItemsList.appendChild(li);
 
-                // Update the total
                 cartTotal += item.price;
             });
 
-            // Update the total display
-            cartTotalElement.textContent = `$${cartTotal}`;
+            cartTotalElement.textContent = `₽${cartTotal}`;
         }
+
+        // Fetch shop items when the page loads
+        async function fetchShopItems() {
+            try {
+                const response = await axios.get('http://localhost:8000/products');
+                const items = response.data;
+                displayShopItems(items);
+            } catch (error) {
+                console.error('Error fetching shop items:', error);
+            }
+        }
+
+        // Display shop items
+        function displayShopItems(items) {
+            const shopItemsContainer = document.getElementById('shop-items');
+            shopItemsContainer.innerHTML = ''; // Clear previous items
+
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                    <button onclick="addToCart('${item.name}', ${item.price}, ${item.id})">Add to Cart</button>
+                `;
+                shopItemsContainer.appendChild(itemDiv);
+            });
+        }
+
+        // Simulate user login (replace with actual login logic)
+        function loginUser(id) {
+            userId = id;
+            loadCart(); // Load the user's cart after login
+        }
+
+        // Example: Simulate a user logging in with ID 1
+        loginUser(1);
+
+        // Fetch shop items when the page loads
+        fetchShopItems();
     </script>
 </body>
+
 </html>

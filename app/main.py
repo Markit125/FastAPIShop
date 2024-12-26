@@ -49,7 +49,8 @@ async def read_shop():
 async def read_recommended():
     with open("static/recommended.html", "r") as file:
         return file.read()
-    
+
+
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
@@ -413,8 +414,10 @@ def startup_event():
     try:
         # pass
         # Drop all tables
+        # Drop all tables
         drop_all_tables(db)
 
+        # Recreate tables
         # Recreate tables
         create_tables(db)
 

@@ -33,13 +33,6 @@
       <label>Password:</label>
       <input type="password" id="password" placeholder="Enter your password" required autocomplete="new-password">
     </div>
-    <div>
-      <label>Role:</label>
-      <select id="role" required>
-        <option value="покупатель">Покупатель</option>
-        <option value="администратор">Администратор</option>
-      </select>
-    </div>
     <button type="submit">Register</button>
   </form>
   <div id="message"></div>
@@ -52,14 +45,12 @@
       const name = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const role = document.getElementById('role').value;
 
       try {
         const response = await axios.post('http://localhost:8000/register', {
           name,
           email,
           password,
-          role,
         });
         document.getElementById('message').innerText = `User registered successfully: ${response.data.email}`;
         window.location.href = '/login';

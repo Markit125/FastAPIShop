@@ -180,8 +180,8 @@ def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends
     email = user.email.lower()  # Convert email to lowercase
     with db.cursor() as cursor:
         cursor.execute(
-            "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s) RETURNING id, name, email, role, created_at",
-            (user.name, email, hashed_password, user.role),
+            "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, 'покупатель') RETURNING id, name, email, role, created_at",
+            (user.name, email, hashed_password),
         )
         new_user = cursor.fetchone()
         db.commit()

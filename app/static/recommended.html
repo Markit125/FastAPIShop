@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommended</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .item button:hover {
+            background-color: #45a049;
+        }
+
+        .cart {
+            margin-top: 20px;
+            border-top: 2px solid #ccc;
+            padding-top: 10px;
+        }
+
+        .cart h2 {
+            margin-bottom: 10px;
+        }
+
+        .cart-item {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Shop</h1>
+
+    <!-- Shop Items -->
+    <div id="shop-items"></div>
+
+    <!-- Shopping Cart -->
+    <div class="cart">
+        <h2>Recommended Products</h2>
+        <ul id="cart-items"></ul>
+        <p>Total: <span id="cart-total">₽0</span></p>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // Cart items and total
+        let cartItems = [];
+        let cartTotal = 0;
+        let userId = null; // Store the logged-in user's ID
+
+        window.addEventListener('load', function() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            } else {
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+                // Fetch products or other data here
+            }
+        });
+
+        // Retrieve userId from localStorage
+        userId = localStorage.getItem('user_id');
+
+        if (!userId) {
+            window.location.href = '/login';
+        } else {
+            loadCart();
+        }
+
+        function saveCartToLocalStorage() {
+            console.log("Saving cart to localStorage...");
+            localStorage.setItem('cartItems', JSON.stringify(cartItems));
+        }
+
+        async function addToCart(itemName, price, productId) {
+            console.log("Adding to cart...");
+            if (!userId) {
+                alert('Please log in to add items to your cart.');
+                return;
+            }
+
+            try {
+                const response = await axios.post('http://localhost:8000/cart/items', {
+                    product_id: productId,
+                    quantity: 1,
+                }, {
+                    params: { user_id: userId },
+                });
+
+                // Reload the cart from the backend
+                loadCart();
+            } catch (error) {
+                console.error('Error adding item to cart:', error);
+            }
+        }
+
+        async function removeFromCart(cartItemId) {
+            console.log("Removing item from cart:", cartItemId);
+            if (!userId) {
+                alert('Please log in to remove items from your cart.');
+                return;
+            }
+
+            try {
+                await axios.delete(`http://localhost:8000/cart/items/${cartItemId}`, {
+                    params: { user_id: userId },
+                });
+
+                // Remove the item from the cartItems array
+                cartItems = cartItems.filter(item => item.id !== cartItemId);
+                updateCart(); // Update the cart display
+            } catch (error) {
+                console.error('Error removing item from cart:', error);
+            }
+        }
+
+        async function loadCart() {
+            console.log("Loading cart...");
+            if (!userId) return; // No user logged in
+
+            try {
+                const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
+                console.log("Cart response:", response.data); // Debugging: Log the response
+
+                // Map the response data to the cartItems array
+                cartItems = response.data.map(item => ({
+                    id: item.id,
+                    cartId: item.cartId,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    name: item.name,
+                    price: item.price,
+                }));
+
+                saveCartToLocalStorage(); // Save to localStorage
+                updateCart(); // Update the cart display
+            } catch (error) {
+                console.error('Error loading cart:', error);
+            }
+            console.log("Cart items:", cartItems);
+        }
+
+        // Update the cart display
+        function updateCart() {
+            console.log("Updating cart...");
+            const cartItemsList = document.getElementById('cart-items');
+            const cartTotalElement = document.getElementById('cart-total');
+
+            cartItemsList.innerHTML = '';
+            cartTotal = 0;
+
+            cartItems.forEach(item => {
+                if (!item.id || !item.name || !item.price) {
+                    console.error('Invalid cart item:', item);
+                    return; // Skip invalid items
+                }
+
+                const li = document.createElement('li');
+                li.className = 'cart-item';
+                li.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                    <button onclick="removeFromCart(${item.id})">Remove</button>
+                `;
+                cartItemsList.appendChild(li);
+
+                cartTotal += item.price * item.quantity; // Adjust for quantity if needed
+            });
+
+            cartTotalElement.textContent = `₽${cartTotal}`;
+        }
+
+        // Fetch shop items when the page loads
+        async function fetchShopItems() {
+            console.log("Fetching shop items...");
+            try {
+                const response = await axios.get(`http://localhost:8000/recommendations?user_id=${userId}`);
+                const items = response.data;
+                displayShopItems(items);
+            } catch (error) {
+                console.error('Error fetching shop items:', error);
+            }
+        }
+
+        // Display shop items
+        function displayShopItems(items) {
+            console.log("Displaying shop items...");
+            const shopItemsContainer = document.getElementById('shop-items');
+            shopItemsContainer.innerHTML = ''; // Clear previous items
+
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                    <button onclick="addToCart('${item.name}', ${item.price}, ${item.id})">Add to Cart</button>
+                `;
+                shopItemsContainer.appendChild(itemDiv);
+            });
+        }
+
+        
+        fetchShopItems();
+    </script>
+</body>
+
+</html>

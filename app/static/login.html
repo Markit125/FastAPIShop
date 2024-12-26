@@ -35,33 +35,52 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        async function loginUser() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-            try {
-                const response = await axios.post('http://localhost:8000/login', {
-                    email,
-                    password,
-                });
-
-                localStorage.setItem('access_token', response.data.access_token);
-                axios.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access_token;
-
-                // Fetch user details
-                const userResponse = await axios.get('http://localhost:8000/users/me');
-                const userId = userResponse.data.id;
-                localStorage.setItem('user_id', userId);
-
-                // Clear cartItems in localStorage
-                localStorage.removeItem('cartItems');
-
-                window.location.href = '/shop';
-            } catch (error) {
-                const errorMessage = error.response?.data?.detail || error.message;
-                document.getElementById('message').innerText = `Error: ${errorMessage}`;
-            }
+        try {
+            const response = await axios.post('http://localhost:8000/login', {
+                email: email,
+                password: password
+            });
+            localStorage.setItem('access_token', response.data.access_token);
+            localStorage.setItem('user_id', response.data.user_id);
+            window.location.href = '/recommended';
+        } catch (error) {
+            console.error('Login failed:', error);
+            alert('Login failed. Please check your credentials.');
         }
+    });
+
+    async function loginUser() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await axios.post('http://localhost:8000/login', {
+                email,
+                password,
+            });
+
+            localStorage.setItem('access_token', response.data.access_token);
+            axios.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access_token;
+
+            // Fetch user details
+            const userResponse = await axios.get('http://localhost:8000/users/me');
+            const userId = userResponse.data.id;
+            localStorage.setItem('user_id', userId);
+
+            // Clear cartItems in localStorage
+            localStorage.removeItem('cartItems');
+
+            window.location.href = '/recommended';
+        } catch (error) {
+            const errorMessage = error.response?.data?.detail || error.message;
+            document.getElementById('message').innerText = `Error: ${errorMessage}`;
+        }
+    }
     </script>
 </body>
 </html>

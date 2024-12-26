@@ -45,6 +45,11 @@ async def read_shop():
     with open("static/shop.html", "r") as file:
         return file.read()
     
+@app.get("/recommended", response_class=HTMLResponse)
+async def read_recommended():
+    with open("static/recommended.html", "r") as file:
+        return file.read()
+    
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
@@ -171,29 +176,23 @@ class OrderItemResponse(BaseModel):
 # Routes
 @app.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends(get_db)):
-    print("/register")
-    try:
-        # Hash the password before saving it to the database
-        hashed_password = pwd_context.hash(user.password)
-        
-        with db.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s) RETURNING id, name, email, role, created_at",
-                (user.name, user.email, hashed_password, user.role),
-            )
-            new_user = cursor.fetchone()
-            db.commit()
-            return new_user
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+    hashed_password = pwd_context.hash(user.password)
+    email = user.email.lower()  # Convert email to lowercase
+    with db.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s) RETURNING id, name, email, role, created_at",
+            (user.name, email, hashed_password, user.role),
+        )
+        new_user = cursor.fetchone()
+        db.commit()
+        return new_user
 
 
 @app.post("/login")
 def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get_db)):
-    print("/login")
+    email = user.email.lower()  # Convert email to lowercase
     with db.cursor() as cursor:
-        cursor.execute("SELECT * FROM users WHERE email = %s", (user.email,))
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         db_user = cursor.fetchone()
         if not db_user or not pwd_context.verify(user.password, db_user["password"]):
             raise HTTPException(status_code=400, detail="Incorrect email or password")
@@ -202,13 +201,14 @@ def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get
         access_token = create_access_token(
             data={"sub": db_user["email"]}, expires_delta=access_token_expires
         )
-        return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer", "user_id": db_user["id"]}
     
 
 # Dependency to get current user
 async def get_current_user(token: str = Depends(oauth2_scheme), db: psycopg2.extensions.connection = Depends(get_db)):
     credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        # status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=status.HTTP_404_NOT_FOUND,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
@@ -284,6 +284,21 @@ def get_products(db: psycopg2.extensions.connection = Depends(get_db)):
         cursor.execute("SELECT * FROM products")
         products = cursor.fetchall()
         return products
+
+
+@app.get("/recommendations", response_model=List[ProductResponse])
+async def get_recommendations(user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
+    print("/recommendations")
+    with db.cursor() as cursor:
+        # Get recommended product IDs for the user
+        cursor.execute("""
+            SELECT p.*
+            FROM recommendations r
+            JOIN products p ON r.product_id = p.id
+            WHERE r.user_id = %s
+        """, (user_id,))
+        recommended_products = cursor.fetchall()
+        return recommended_products
     
 
 # Route to get the user's cart
@@ -397,15 +412,15 @@ def create_access_token(data: dict, expires_delta: timedelta):
 def startup_event():
     db = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
-        pass
-        # # Drop all tables
-        # drop_all_tables(db)
+        # pass
+        # Drop all tables
+        drop_all_tables(db)
 
-        # # Recreate tables
-        # create_tables(db)
+        # Recreate tables
+        create_tables(db)
 
-        # # Insert sample data (optional)
-        # insert_sample_data(db)
+        # Insert sample data (optional)
+        insert_sample_data(db)
     finally:
         db.close()
 
@@ -523,10 +538,34 @@ def insert_sample_data(db: psycopg2.extensions.connection):
     cursor = db.cursor()
     try:
         cursor.execute("""
+            -- Заполнение таблицы пользователей
             INSERT INTO users (name, email, password, role)
-            VALUES (%s, %s, %s, %s)
+            VALUES
+                ('Иван Иванов', 'ivanov@example.com', %s, 'покупатель'),
+                ('Мария Петрова', 'petrova@example.com', %s, 'покупатель'),
+                ('Алексей Сидоров', 'sidorov@example.com', %s, 'администратор'),
+                ('Наталья Смирнова', 'smirnova@example.com', %s, 'покупатель'),
+                ('Дмитрий Кузнецов', 'kuznetsov@example.com', %s, 'покупатель'),
+                ('Ольга Васильева', 'vasilieva@example.com', %s, 'покупатель'),
+                ('Екатерина Зайцева', 'zaytseva@example.com', %s, 'покупатель'),
+                ('Игорь Беляев', 'belyaev@example.com', %s, 'покупатель'),
+                ('Марина Орлова', 'orlova@example.com', %s, 'покупатель'),
+                ('Юрий Михайлов', 'mikhaylov@example.com', %s, 'администратор'),
+                ('Татьяна Федорова', 'fedorova@example.com', %s, 'покупатель'),
+                ('Константин Соловьев', 'solovyov@example.com', %s, 'покупатель')
             ON CONFLICT (email) DO NOTHING;
-        """, ("Sample User", "s@s", pwd_context.hash("s"), "покупатель"))
+        """, (pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123"),
+               pwd_context.hash("password123")))
 
         # Insert parent categories first
         cursor.execute("""
@@ -608,22 +647,6 @@ def insert_sample_data(db: psycopg2.extensions.connection):
         })
 
         cursor.execute("""
-                -- Заполнение таблицы пользователей
-                INSERT INTO users (name, email, password, role)
-                VALUES
-                    ('Иван Иванов', 'ivanov@example.com', 'password123', 'покупатель'),
-                    ('Мария Петрова', 'petrova@example.com', 'password123', 'покупатель'),
-                    ('Алексей Сидоров', 'sidorov@example.com', 'password123', 'администратор'),
-                    ('Наталья Смирнова', 'smirnova@example.com', 'password123', 'покупатель'),
-                    ('Дмитрий Кузнецов', 'kuznetsov@example.com', 'password123', 'покупатель'),
-                    ('Ольга Васильева', 'vasilieva@example.com', 'password123', 'покупатель'),
-                    ('Екатерина Зайцева', 'zaytseva@example.com', 'password123', 'покупатель'),
-                    ('Игорь Беляев', 'belyaev@example.com', 'password123', 'покупатель'),
-                    ('Марина Орлова', 'orlova@example.com', 'password123', 'покупатель'),
-                    ('Юрий Михайлов', 'mikhaylov@example.com', 'password123', 'администратор'),
-                    ('Татьяна Федорова', 'fedorova@example.com', 'password123', 'покупатель'),
-                    ('Константин Соловьев', 'solovyov@example.com', 'password123', 'покупатель');
-
                 -- Заполнение таблицы корзин
                 INSERT INTO cart (user_id)
                 VALUES

@@ -106,14 +106,31 @@
                     params: { user_id: userId },
                 });
 
-                // Add the item to the cartItems array
-                cartItems.push({ name: itemName, price: price, productId: productId });
-                saveCartToLocalStorage(); // Save to localStorage
-                updateCart();
+                // Reload the cart from the backend
+                loadCart();
             } catch (error) {
                 console.error('Error adding item to cart:', error);
             }
-            console.log("Cart items:", cartItems);
+        }
+
+        async function removeFromCart(cartItemId) {
+            console.log("Removing item from cart:", cartItemId);
+            if (!userId) {
+                alert('Please log in to remove items from your cart.');
+                return;
+            }
+
+            try {
+                await axios.delete(`http://localhost:8000/cart/items/${cartItemId}`, {
+                    params: { user_id: userId },
+                });
+
+                // Remove the item from the cartItems array
+                cartItems = cartItems.filter(item => item.id !== cartItemId);
+                updateCart(); // Update the cart display
+            } catch (error) {
+                console.error('Error removing item from cart:', error);
+            }
         }
 
         async function loadCart() {
@@ -152,17 +169,20 @@
             cartTotal = 0;
 
             cartItems.forEach(item => {
-                if (!item.name || !item.price) {
+                if (!item.id || !item.name || !item.price) {
                     console.error('Invalid cart item:', item);
-                    // localStorage.removeItem('cartItems');
                     return; // Skip invalid items
                 }
 
                 const li = document.createElement('li');
-                li.textContent = `${item.name} - ₽${item.price}`;
+                li.className = 'cart-item';
+                li.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                    <button onclick="removeFromCart(${item.id})">Remove</button>
+                `;
                 cartItemsList.appendChild(li);
 
-                cartTotal += item.price;
+                cartTotal += item.price * item.quantity; // Adjust for quantity if needed
             });
 
             cartTotalElement.textContent = `₽${cartTotal}`;
@@ -198,18 +218,7 @@
         }
 
         
-        function loadCartFromLocalStorage() {
-            console.log("Loading cart from localStorage...");
-            const savedCartItems = localStorage.getItem('cartItems');
-            if (savedCartItems) {
-                cartItems = JSON.parse(savedCartItems);
-                updateCart(); // Update the cart display
-            }
-        }
-        
         fetchShopItems();
-        // Load cart items from localStorage when the page loads
-        loadCartFromLocalStorage();
     </script>
 </body>
 

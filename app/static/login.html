@@ -53,6 +53,9 @@
                 const userId = userResponse.data.id;
                 localStorage.setItem('user_id', userId);
 
+                // Clear cartItems in localStorage
+                localStorage.removeItem('cartItems');
+
                 window.location.href = '/shop';
             } catch (error) {
                 const errorMessage = error.response?.data?.detail || error.message;

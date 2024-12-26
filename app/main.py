@@ -349,6 +349,27 @@ def add_cart_item(item: CartItemCreate, user_id: int, db: psycopg2.extensions.co
         return new_item_with_product
     
 
+@app.delete("/cart/items/{cart_item_id}")
+def remove_cart_item(cart_item_id: int, user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
+    print("/cart/items/delete")
+    with db.cursor() as cursor:
+        # Verify that the cart item belongs to the user
+        cursor.execute("""
+            SELECT ci.id
+            FROM cart_items ci
+            JOIN cart c ON ci.cart_id = c.id
+            WHERE ci.id = %s AND c.user_id = %s
+        """, (cart_item_id, user_id))
+        item = cursor.fetchone()
+        if not item:
+            raise HTTPException(status_code=404, detail="Cart item not found")
+        
+        # Delete the cart item
+        cursor.execute("DELETE FROM cart_items WHERE id = %s", (cart_item_id,))
+        db.commit()
+    return {"detail": "Cart item removed successfully"}
+
+
 @app.post("/orders", response_model=OrderResponse)
 def create_order(order: OrderCreate, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/orders")
@@ -376,14 +397,15 @@ def create_access_token(data: dict, expires_delta: timedelta):
 def startup_event():
     db = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
-        # Drop all tables
-        drop_all_tables(db)
+        pass
+        # # Drop all tables
+        # drop_all_tables(db)
 
-        # Recreate tables
-        create_tables(db)
+        # # Recreate tables
+        # create_tables(db)
 
-        # Insert sample data (optional)
-        insert_sample_data(db)
+        # # Insert sample data (optional)
+        # insert_sample_data(db)
     finally:
         db.close()
 
@@ -411,8 +433,6 @@ def drop_all_tables(db: psycopg2.extensions.connection):
 def create_tables(db: psycopg2.extensions.connection):
     try:
         with db.cursor() as cursor:
-            # Drop the users table if it exists
-            cursor.execute("DROP TABLE IF EXISTS users CASCADE;")
 
             # Recreate the users table with the correct schema
             cursor.execute("""
@@ -591,7 +611,6 @@ def insert_sample_data(db: psycopg2.extensions.connection):
                 -- Заполнение таблицы пользователей
                 INSERT INTO users (name, email, password, role)
                 VALUES
-                    ('TEST', 'W@W', 'w', 'покупатель'),
                     ('Иван Иванов', 'ivanov@example.com', 'password123', 'покупатель'),
                     ('Мария Петрова', 'petrova@example.com', 'password123', 'покупатель'),
                     ('Алексей Сидоров', 'sidorov@example.com', 'password123', 'администратор'),

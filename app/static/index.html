@@ -6,22 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-
-    input,
-    button {
-      margin: 5px 0;
-    }
     /* Navigation Panel Styles */
     .nav-panel {
       display: flex;
       justify-content: space-around;
       background-color: #333;
       padding: 10px;
-      margin-bottom: 20px;
     }
 
     .nav-panel a {
@@ -32,6 +22,69 @@
 
     .nav-panel a:hover {
       color: #4CAF50;
+    }
+
+    /* Styles from the first file */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f0f8ff; /* Light blue background */
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #1e90ff; /* Bright blue color */
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #1e90ff;
+    }
+
+    input {
+      width: 95%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      background-color: #f8f8f8;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #1e90ff; /* Bright blue color */
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #4682b4; /* Darker blue on hover */
+    }
+
+    #message {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #ff4500; /* Red color for errors */
     }
   </style>
 </head>
@@ -45,23 +98,26 @@
     <a href="/">Register</a>
     <a href="/login">Login</a>
   </div>
-  <h1>Register</h1>
-  <form id="registerForm">
-    <div>
-      <label>Name:</label>
-      <input type="text" id="name" placeholder="Enter your name" required autocomplete="name">
-    </div>
-    <div>
-      <label>Email:</label>
-      <input type="email" id="email" placeholder="Enter your email" required autocomplete="email">
-    </div>
-    <div>
-      <label>Password:</label>
-      <input type="password" id="password" placeholder="Enter your password" required autocomplete="new-password">
-    </div>
-    <button type="submit">Register</button>
-  </form>
-  <div id="message"></div>
+
+  <div class="container">
+    <h1>Register</h1>
+    <form id="registerForm">
+      <div>
+        <label for="name">Name:</label>
+        <input type="text" id="name" placeholder="Enter your name" required autocomplete="name">
+      </div>
+      <div>
+        <label for="email">Email:</label>
+        <input type="email" id="email" placeholder="Enter your email" required autocomplete="email">
+      </div>
+      <div>
+        <label for="password">Password:</label>
+        <input type="password" id="password" placeholder="Enter your password" required autocomplete="new-password">
+      </div>
+      <button type="submit">Register</button>
+    </form>
+    <div id="message"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>

@@ -4,20 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop</title>
+    <title>Checkout</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-
-        /* Navigation Panel Styles */
+        /* Existing Navigation Panel Styles */
         .nav-panel {
             display: flex;
             justify-content: space-around;
             background-color: #333;
             padding: 10px;
-            margin-bottom: 20px;
         }
 
         .nav-panel a {
@@ -30,52 +24,153 @@
             color: #4CAF50;
         }
 
+        /* Styles to be added from the second file */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f9ff;
+            color: #333;
+        }
+
+        header {
+            background-color: #1e90ff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .shop-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
         .item {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin: 10px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
+            text-align: center;
+        }
+
+        .item span {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            font-weight: bold;
         }
 
         .item button {
-            background-color: #4CAF50;
+            background-color: #1e90ff;
             color: white;
             border: none;
-            padding: 5px 10px;
+            border-radius: 4px;
+            padding: 10px 15px;
             cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
         }
 
         .item button:hover {
-            background-color: #45a049;
+            background-color: #005fcb;
         }
 
         .cart {
-            margin-top: 20px;
-            border-top: 2px solid #ccc;
-            padding-top: 10px;
+            margin-top: 40px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .cart h2 {
-            margin-bottom: 10px;
+            margin-top: 0;
+            color: #1e90ff;
+        }
+
+        .cart ul {
+            list-style: none;
+            padding: 0;
         }
 
         .cart-item {
-            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item button {
+            background-color: #ff4c4c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .cart-item button:hover {
+            background-color: #cc0000;
+        }
+
+        .total {
+            margin-top: 10px;
+            font-size: 1.2rem;
+            text-align: right;
+            font-weight: bold;
         }
 
         .checkout-button {
-            background-color: #008CBA;
+            background: linear-gradient(to bottom, #007bff, #0069d9);
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 15px 25px;
             cursor: pointer;
             margin-top: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 16px;
         }
 
         .checkout-button:hover {
-            background-color: #007B9E;
+            background: linear-gradient(to bottom, #0069d9, #0056b3);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+
+        .checkout-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #007bff;
+        }
+
+        @media (max-width: 768px) {
+            .checkout-button {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -88,20 +183,25 @@
         <a href="/checkout">Checkout</a>
         <a href="/">Register</a>
         <a href="/login">Login</a>
-      </div>
+    </div>
 
-    <h1>Shop</h1>
+    <!-- Header Section -->
+    <header>
+        <h1>Shop</h1>
+    </header>
 
-    <!-- Shop Items -->
-    <div id="shop-items"></div>
+    <div class="container">
+        <!-- Shop Items -->
+        <div class="shop-items" id="shop-items"></div>
 
-    <!-- Shopping Cart -->
-    <div class="cart">
-        <h2>Shopping Cart</h2>
-        <ul id="cart-items"></ul>
-        <p>Total: <span id="cart-total">₽0</span></p>
-        <!-- Add a "Go to Checkout" button -->
-        <button class="checkout-button" onclick="goToCheckout()">Go to Checkout</button>
+        <!-- Shopping Cart -->
+        <div class="cart">
+            <h2>Shopping Cart</h2>
+            <ul id="cart-items"></ul>
+            <p class="total">Total: <span id="cart-total">₽0</span></p>
+            <!-- Add a "Go to Checkout" button -->
+            <button class="checkout-button" onclick="goToCheckout()">Go to Checkout</button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>

@@ -4,20 +4,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recommended</title>
+    <title>Recommended Products</title>
     <style>
+        /* Общие стили */
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f8ff; /* Светло-синий фон */
+            color: #333;
+            margin: 0;
+            padding: 0;
         }
 
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #1e90ff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #f8f8f8;
+        }
+
+        .item span {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .item button {
+            background-color: #1e90ff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .item button:hover {
+            background-color: #4682b4;
+        }
+
+        .cart {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ccc;
+        }
+
+        .cart h2 {
+            color: #1e90ff;
+            margin-bottom: 15px;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #f8f8f8;
+        }
+
+        .cart-item span {
+            font-size: 16px;
+        }
+
+        .cart-item button {
+            background-color: #ff4500;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .cart-item button:hover {
+            background-color: #ff6347;
+        }
+
+        #cart-total {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
         /* Navigation Panel Styles */
         .nav-panel {
             display: flex;
             justify-content: space-around;
             background-color: #333;
             padding: 10px;
-            margin-bottom: 20px;
         }
 
         .nav-panel a {
@@ -28,54 +121,6 @@
 
         .nav-panel a:hover {
             color: #4CAF50;
-        }
-
-        .item {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .item button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
-
-        .item button:hover {
-            background-color: #45a049;
-        }
-
-        .cart {
-            margin-top: 20px;
-            border-top: 2px solid #ccc;
-            padding-top: 10px;
-        }
-
-        .cart h2 {
-            margin-bottom: 10px;
-        }
-
-        .cart-item {
-            margin: 5px 0;
-        }
-
-        .checkout-button {
-            background-color: #008CBA;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .checkout-button:hover {
-            background-color: #007B9E;
         }
     </style>
 </head>
@@ -88,40 +133,36 @@
         <a href="/checkout">Checkout</a>
         <a href="/">Register</a>
         <a href="/login">Login</a>
-      </div>
+    </div>
+    <div class="container">
+        <h1>Recommended Products</h1>
 
-    <h1>Recommended Products</h1>
+        <!-- Список рекомендованных товаров -->
+        <div id="shop-items"></div>
 
-    <!-- Shop Items -->
-    <div id="shop-items"></div>
-
-    <!-- Shopping Cart -->
-    <div class="cart">
-        <h2>Shopping Cart</h2>
-        <ul id="cart-items"></ul>
-        <p>Total: <span id="cart-total">₽0</span></p>
-        <!-- Add a "Go to Checkout" button -->
-        <button class="checkout-button" onclick="goToCheckout()">Go to Checkout</button>
+        <!-- Корзина -->
+        <div class="cart">
+            <h2>Shopping Cart</h2>
+            <ul id="cart-items"></ul>
+            <p>Total: <span id="cart-total">₽0</span></p>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        // Cart items and total
         let cartItems = [];
         let cartTotal = 0;
-        let userId = null; // Store the logged-in user's ID
+        let userId = null;
 
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             const token = localStorage.getItem('access_token');
             if (!token) {
                 window.location.href = '/login';
             } else {
                 axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
-                // Fetch products or other data here
             }
         });
 
-        // Retrieve userId from localStorage
         userId = localStorage.getItem('user_id');
 
         if (!userId) {
@@ -131,12 +172,10 @@
         }
 
         function saveCartToLocalStorage() {
-            console.log("Saving cart to localStorage...");
             localStorage.setItem('cartItems', JSON.stringify(cartItems));
         }
 
         async function addToCart(itemName, price, productId) {
-            console.log("Adding to cart...");
             if (!userId) {
                 alert('Please log in to add items to your cart.');
                 return;
@@ -149,8 +188,6 @@
                 }, {
                     params: { user_id: userId },
                 });
-
-                // Reload the cart from the backend
                 loadCart();
             } catch (error) {
                 console.error('Error adding item to cart:', error);
@@ -158,7 +195,6 @@
         }
 
         async function removeFromCart(cartItemId) {
-            console.log("Removing item from cart:", cartItemId);
             if (!userId) {
                 alert('Please log in to remove items from your cart.');
                 return;
@@ -168,24 +204,17 @@
                 await axios.delete(`http://localhost:8000/cart/items/${cartItemId}`, {
                     params: { user_id: userId },
                 });
-
-                // Remove the item from the cartItems array
                 cartItems = cartItems.filter(item => item.id !== cartItemId);
-                updateCart(); // Update the cart display
+                updateCart();
             } catch (error) {
                 console.error('Error removing item from cart:', error);
             }
         }
 
         async function loadCart() {
-            console.log("Loading cart...");
-            if (!userId) return; // No user logged in
-
+            if (!userId) return;
             try {
                 const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
-                console.log("Cart response:", response.data); // Debugging: Log the response
-
-                // Map the response data to the cartItems array
                 cartItems = response.data.map(item => ({
                     id: item.id,
                     cartId: item.cartId,
@@ -194,18 +223,14 @@
                     name: item.name,
                     price: item.price,
                 }));
-
-                saveCartToLocalStorage(); // Save to localStorage
-                updateCart(); // Update the cart display
+                saveCartToLocalStorage();
+                updateCart();
             } catch (error) {
                 console.error('Error loading cart:', error);
             }
-            console.log("Cart items:", cartItems);
         }
 
-        // Update the cart display
         function updateCart() {
-            console.log("Updating cart...");
             const cartItemsList = document.getElementById('cart-items');
             const cartTotalElement = document.getElementById('cart-total');
 
@@ -214,8 +239,7 @@
 
             cartItems.forEach(item => {
                 if (!item.id || !item.name || !item.price) {
-                    console.error('Invalid cart item:', item);
-                    return; // Skip invalid items
+                    return;
                 }
 
                 const li = document.createElement('li');
@@ -225,30 +249,25 @@
                     <button onclick="removeFromCart(${item.id})">Remove</button>
                 `;
                 cartItemsList.appendChild(li);
-
-                cartTotal += item.price * item.quantity; // Adjust for quantity if needed
+                cartTotal += item.price * item.quantity;
             });
 
             cartTotalElement.textContent = `₽${cartTotal}`;
         }
 
-        // Fetch recommended items when the page loads
         async function fetchShopItems() {
-            console.log("Fetching recommended items...");
             try {
                 const response = await axios.get(`http://localhost:8000/recommendations?user_id=${userId}`);
                 const items = response.data;
                 displayShopItems(items);
             } catch (error) {
-                console.error('Error fetching recommended items:', error);
+                console.error('Error fetching shop items:', error);
             }
         }
 
-        // Display recommended items
         function displayShopItems(items) {
-            console.log("Displaying recommended items...");
             const shopItemsContainer = document.getElementById('shop-items');
-            shopItemsContainer.innerHTML = ''; // Clear previous items
+            shopItemsContainer.innerHTML = '';
 
             items.forEach(item => {
                 const itemDiv = document.createElement('div');
@@ -259,15 +278,6 @@
                 `;
                 shopItemsContainer.appendChild(itemDiv);
             });
-        }
-
-        // Redirect to the checkout page
-        function goToCheckout() {
-            if (cartItems.length === 0) {
-                alert('Your cart is empty. Add items to proceed to checkout.');
-                return;
-            }
-            window.location.href = '/checkout';
         }
 
         fetchShopItems();

@@ -11,6 +11,25 @@
             margin: 20px;
         }
 
+        /* Navigation Panel Styles */
+        .nav-panel {
+            display: flex;
+            justify-content: space-around;
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-panel a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+        }
+
+        .nav-panel a:hover {
+            color: #4CAF50;
+        }
+
         .item {
             border: 1px solid #ccc;
             padding: 10px;
@@ -45,10 +64,32 @@
         .cart-item {
             margin: 5px 0;
         }
+
+        .checkout-button {
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .checkout-button:hover {
+            background-color: #007B9E;
+        }
     </style>
 </head>
 
 <body>
+    <!-- Navigation Panel -->
+    <div class="nav-panel">
+        <a href="/recommended">Recommended</a>
+        <a href="/shop">Shop</a>
+        <a href="/checkout">Checkout</a>
+        <a href="/">Register</a>
+        <a href="/login">Login</a>
+      </div>
+
     <h1>Recommended Products</h1>
 
     <!-- Shop Items -->
@@ -59,7 +100,10 @@
         <h2>Shopping Cart</h2>
         <ul id="cart-items"></ul>
         <p>Total: <span id="cart-total">₽0</span></p>
+        <!-- Add a "Go to Checkout" button -->
+        <button class="checkout-button" onclick="goToCheckout()">Go to Checkout</button>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         // Cart items and total
@@ -188,21 +232,21 @@
             cartTotalElement.textContent = `₽${cartTotal}`;
         }
 
-        // Fetch shop items when the page loads
+        // Fetch recommended items when the page loads
         async function fetchShopItems() {
-            console.log("Fetching shop items...");
+            console.log("Fetching recommended items...");
             try {
                 const response = await axios.get(`http://localhost:8000/recommendations?user_id=${userId}`);
                 const items = response.data;
                 displayShopItems(items);
             } catch (error) {
-                console.error('Error fetching shop items:', error);
+                console.error('Error fetching recommended items:', error);
             }
         }
 
-        // Display shop items
+        // Display recommended items
         function displayShopItems(items) {
-            console.log("Displaying shop items...");
+            console.log("Displaying recommended items...");
             const shopItemsContainer = document.getElementById('shop-items');
             shopItemsContainer.innerHTML = ''; // Clear previous items
 
@@ -217,7 +261,15 @@
             });
         }
 
-        
+        // Redirect to the checkout page
+        function goToCheckout() {
+            if (cartItems.length === 0) {
+                alert('Your cart is empty. Add items to proceed to checkout.');
+                return;
+            }
+            window.location.href = '/checkout';
+        }
+
         fetchShopItems();
     </script>
 </body>

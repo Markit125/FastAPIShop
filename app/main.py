@@ -50,6 +50,15 @@ async def read_recommended():
     with open("static/recommended.html", "r") as file:
         return file.read()
     
+@app.get("/checkout", response_class=HTMLResponse)
+async def read_checkout():
+    with open("static/checkout.html", "r") as file:
+        return file.read()
+
+@app.get("/thank-you", response_class=HTMLResponse)
+async def read_thank_you():
+    with open("static/thank-you.html", "r") as file:
+        return file.read()
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
@@ -172,6 +181,13 @@ class OrderItemResponse(BaseModel):
         from_attributes = True
 
 
+class PaymentInfo(BaseModel):
+    pan: str  # Primary Account Number
+    cvv: str  # Card Verification Value
+    expiration_date: str  # Expiration date in MM/YY format
+    user_id: int  # User ID for the purchase
+    total_amount: float  # Total amount of the purchase
+
 # Routes
 @app.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends(get_db)):
@@ -201,6 +217,55 @@ def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get
             data={"sub": db_user["email"]}, expires_delta=access_token_expires
         )
         return {"access_token": access_token, "token_type": "bearer", "user_id": db_user["id"]}
+
+
+@app.post("/purchase")
+async def create_purchase(payment_info: PaymentInfo, db: psycopg2.extensions.connection = Depends(get_db)):
+    print("/purchase")
+    try:
+        # Validate the expiration date
+        expiration_date = payment_info.expiration_date
+        if not expiration_date or len(expiration_date) != 5 or expiration_date[2] != '/':
+            raise HTTPException(status_code=400, detail="Invalid expiration date format. Use MM/YY.")
+
+        # Create a new order
+        with db.cursor() as cursor:
+            # Insert the order
+            cursor.execute(
+                "INSERT INTO orders (user_id, total_amount, status, payment_id, created_at) "
+                "VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (payment_info.user_id, payment_info.total_amount, 'в обработке', f"payment_{payment_info.pan[-4:]}", datetime.utcnow()),
+            )
+            order_id = cursor.fetchone()["id"]
+
+            # Fetch the user's cart items
+            cursor.execute("""
+                SELECT ci.product_id, ci.quantity, p.price
+                FROM cart_items ci
+                JOIN cart c ON ci.cart_id = c.id
+                JOIN products p ON ci.product_id = p.id
+                WHERE c.user_id = %s
+            """, (payment_info.user_id,))
+            cart_items = cursor.fetchall()
+
+            # Insert order items
+            for item in cart_items:
+                cursor.execute(
+                    "INSERT INTO order_items (order_id, product_id, quantity, price) "
+                    "VALUES (%s, %s, %s, %s)",
+                    (order_id, item["product_id"], item["quantity"], item["price"]),
+                )
+
+            # Clear the user's cart
+            cursor.execute("DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM cart WHERE user_id = %s)", (payment_info.user_id,))
+
+            db.commit()
+
+        return {"detail": "Purchase successful!", "order_id": order_id}
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating purchase: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing the purchase.")
     
 
 # Dependency to get current user
@@ -411,15 +476,15 @@ def create_access_token(data: dict, expires_delta: timedelta):
 def startup_event():
     db = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
-        # pass
-        # Drop all tables
-        drop_all_tables(db)
+        pass
+        # # Drop all tables
+        # drop_all_tables(db)
 
-        # Recreate tables
-        create_tables(db)
+        # # Recreate tables
+        # create_tables(db)
 
-        # Insert sample data (optional)
-        insert_sample_data(db)
+        # # Insert sample data (optional)
+        # insert_sample_data(db)
     finally:
         db.close()
 

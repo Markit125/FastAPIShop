@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        /* Navigation Panel Styles */
+        .nav-panel {
+            display: flex;
+            justify-content: space-around;
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-panel a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+        }
+
+        .nav-panel a:hover {
+            color: #4CAF50;
+        }
+
+        .cart {
+            margin-top: 20px;
+            border-top: 2px solid #ccc;
+            padding-top: 10px;
+        }
+
+        .cart h2 {
+            margin-bottom: 10px;
+        }
+
+        .cart-item {
+            margin: 5px 0;
+        }
+
+        .checkout-form {
+            margin-top: 20px;
+        }
+
+        .checkout-form label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        .checkout-form input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .checkout-form button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .checkout-form button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Panel -->
+    <div class="nav-panel">
+        <a href="/recommended">Recommended</a>
+        <a href="/shop">Shop</a>
+        <a href="/checkout">Checkout</a>
+        <a href="/">Register</a>
+        <a href="/login">Login</a>
+      </div>
+
+    <h1>Checkout</h1>
+
+    <!-- Shopping Cart -->
+    <div class="cart">
+        <h2>Shopping Cart</h2>
+        <ul id="cart-items"></ul>
+        <p>Total: <span id="cart-total">₽0</span></p>
+    </div>
+
+    <!-- Checkout Form -->
+    <div class="checkout-form">
+        <h2>Payment Information</h2>
+        <form id="payment-form">
+            <label for="pan">PAN (Primary Account Number):</label>
+            <input type="text" id="pan" name="pan" required>
+
+            <label for="cvv">CVV:</label>
+            <input type="text" id="cvv" name="cvv" required>
+
+            <label for="expiration-date">Expiration Date:</label>
+            <input type="text" id="expiration-date" name="expiration-date" placeholder="MM/YY" required>
+
+            <button type="submit">Complete Purchase</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // Cart items and total
+        let cartItems = [];
+        let cartTotal = 0;
+        let userId = null; // Store the logged-in user's ID
+
+        window.addEventListener('load', function () {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            } else {
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+                // Fetch cart data
+                loadCart();
+            }
+        });
+
+        // Retrieve userId from localStorage
+        userId = localStorage.getItem('user_id');
+
+        if (!userId) {
+            window.location.href = '/login';
+        }
+
+        async function loadCart() {
+            console.log("Loading cart...");
+            if (!userId) return; // No user logged in
+
+            try {
+                const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
+                console.log("Cart response:", response.data); // Debugging: Log the response
+
+                // Map the response data to the cartItems array
+                cartItems = response.data.map(item => ({
+                    id: item.id,
+                    cartId: item.cartId,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    name: item.name,
+                    price: item.price,
+                }));
+
+                updateCart(); // Update the cart display
+            } catch (error) {
+                console.error('Error loading cart:', error);
+            }
+            console.log("Cart items:", cartItems);
+        }
+
+        // Update the cart display
+        function updateCart() {
+            console.log("Updating cart...");
+            const cartItemsList = document.getElementById('cart-items');
+            const cartTotalElement = document.getElementById('cart-total');
+
+            cartItemsList.innerHTML = '';
+            cartTotal = 0;
+
+            cartItems.forEach(item => {
+                if (!item.id || !item.name || !item.price) {
+                    console.error('Invalid cart item:', item);
+                    return; // Skip invalid items
+                }
+
+                const li = document.createElement('li');
+                li.className = 'cart-item';
+                li.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                `;
+                cartItemsList.appendChild(li);
+
+                cartTotal += item.price * item.quantity; // Adjust for quantity if needed
+            });
+
+            cartTotalElement.textContent = `₽${cartTotal}`;
+        }
+
+        // Handle form submission
+        document.getElementById('payment-form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const pan = document.getElementById('pan').value;
+            const cvv = document.getElementById('cvv').value;
+            const expirationDate = document.getElementById('expiration-date').value;
+
+            if (!pan || !cvv || !expirationDate) {
+                alert('Please fill out all payment fields.');
+                return;
+            }
+
+            try {
+                const response = await axios.post('/purchase', {
+                    pan: pan,
+                    cvv: cvv,
+                    expiration_date: expirationDate,
+                    user_id: userId,
+                    total_amount: cartTotal
+                });
+
+                if (response.data.detail) {
+                    alert(response.data.detail);
+                    window.location.href = '/thank-you'; // Redirect to a thank-you page
+                } else {
+                    alert('Purchase failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error completing purchase:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+    </script>
+</body>
+
+</html>

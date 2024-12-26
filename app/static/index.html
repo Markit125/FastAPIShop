@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Frontend</title>
+  <title>Register</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -15,10 +15,36 @@
     button {
       margin: 5px 0;
     }
+    /* Navigation Panel Styles */
+    .nav-panel {
+      display: flex;
+      justify-content: space-around;
+      background-color: #333;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+
+    .nav-panel a {
+      color: white;
+      text-decoration: none;
+      font-size: 16px;
+    }
+
+    .nav-panel a:hover {
+      color: #4CAF50;
+    }
   </style>
 </head>
 
 <body>
+  <!-- Navigation Panel -->
+  <div class="nav-panel">
+    <a href="/recommended">Recommended</a>
+    <a href="/shop">Shop</a>
+    <a href="/checkout">Checkout</a>
+    <a href="/">Register</a>
+    <a href="/login">Login</a>
+  </div>
   <h1>Register</h1>
   <form id="registerForm">
     <div>

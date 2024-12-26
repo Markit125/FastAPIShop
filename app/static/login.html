@@ -3,124 +3,84 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-  <style>
-    /* Общие стили для всей страницы */
-    body {
-      font-family: 'Arial', sans-serif;
-      background-color: #f0f8ff; /* Светлый синий фон */
-      color: #333;
-      margin: 0;
-      padding: 0;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
 
-    .container {
-      max-width: 400px;
-      margin: 100px auto;
-      padding: 20px;
-      background: #fff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    h1 {
-      color: #1e90ff; /* Ярко-синий цвет */
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-      color: #1e90ff;
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 16px;
-      background-color: #f8f8f8;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #1e90ff; /* Ярко-синий цвет */
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #4682b4; /* Темно-синий при наведении */
-    }
-
-    #message {
-      margin-top: 20px;
-      font-size: 16px;
-      color: #ff4500; /* Красный цвет для ошибок */
-    }
-
-    .link {
-      display: block;
-      margin-top: 15px;
-      color: #1e90ff;
-      text-decoration: none;
-      font-size: 14px;
-    }
-
-    .link:hover {
-      text-decoration: underline;
-    }
-  </style>
+        input,
+        button {
+            margin: 5px 0;
+        }
+    </style>
 </head>
-
 <body>
-  <div class="container">
     <h1>Login</h1>
     <form id="loginForm">
-      <label for="email">Email:</label>
-      <input type="email" id="email" placeholder="Enter your email" required autocomplete="email">
-
-      <label for="password">Password:</label>
-      <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
-
-      <button type="submit">Login</button>
+        <div>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required autocomplete="email">
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="button" onclick="loginUser()">Login</button>
     </form>
     <div id="message"></div>
-    <a href="/register" class="link">Don't have an account? Register</a>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script>
-    document.getElementById('loginForm').addEventListener('submit', async function (event) {
-      event.preventDefault();
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      try {
-        const response = await axios.post('http://localhost:8000/login', {
-          email,
-          password,
-        });
-        document.getElementById('message').innerText = `Welcome back, ${response.data.name}!`;
-        window.location.href = '/recommended';
-      } catch (error) {
-        const errorMessage = error.response?.data?.detail || error.message;
-        document.getElementById('message').innerText = `Error: ${errorMessage}`;
-      }
+        try {
+            const response = await axios.post('http://localhost:8000/login', {
+                email: email,
+                password: password
+            });
+            localStorage.setItem('access_token', response.data.access_token);
+            localStorage.setItem('user_id', response.data.user_id);
+            window.location.href = '/recommended';
+        } catch (error) {
+            console.error('Login failed:', error);
+            alert('Login failed. Please check your credentials.');
+        }
     });
-  </script>
-</body>
 
+    async function loginUser() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await axios.post('http://localhost:8000/login', {
+                email,
+                password,
+            });
+
+            localStorage.setItem('access_token', response.data.access_token);
+            axios.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access_token;
+
+            // Fetch user details
+            const userResponse = await axios.get('http://localhost:8000/users/me');
+            const userId = userResponse.data.id;
+            localStorage.setItem('user_id', userId);
+
+            // Clear cartItems in localStorage
+            localStorage.removeItem('cartItems');
+
+            window.location.href = '/recommended';
+        } catch (error) {
+            const errorMessage = error.response?.data?.detail || error.message;
+            document.getElementById('message').innerText = `Error: ${errorMessage}`;
+        }
+    }
+    </script>
+</body>
 </html>

@@ -18,17 +18,16 @@
         }
     </style>
 </head>
-
 <body>
     <h1>Login</h1>
     <form id="loginForm">
         <div>
             <label for="email">Email:</label>
-            <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
+            <input type="email" id="email" name="email" required autocomplete="email">
         </div>
         <div>
             <label for="password">Password:</label>
-            <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+            <input type="password" id="password" name="password" required autocomplete="current-password">
         </div>
         <button type="button" onclick="loginUser()">Login</button>
     </form>
@@ -46,11 +45,14 @@
                     password,
                 });
 
-                // Store the JWT in local storage
                 localStorage.setItem('access_token', response.data.access_token);
-                console.log('Token retrieved from localStorage:', response.data.access_token);
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access_token;
 
-                // Redirect to the dashboard
+                // Fetch user details
+                const userResponse = await axios.get('http://localhost:8000/users/me');
+                const userId = userResponse.data.id;
+                localStorage.setItem('user_id', userId);
+
                 window.location.href = '/shop';
             } catch (error) {
                 const errorMessage = error.response?.data?.detail || error.message;
@@ -59,5 +61,4 @@
         }
     </script>
 </body>
-
 </html>

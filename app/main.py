@@ -27,20 +27,24 @@ app.add_middleware(
 # Serve static files (e.g., CSS, JS, images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     with open("static/index.html", "r") as file:
         return file.read()
+    
 
 @app.get("/login", response_class=HTMLResponse)
 async def read_login():
     with open("static/login.html", "r") as file:
         return file.read()
+    
 
 @app.get("/shop", response_class=HTMLResponse)
 async def read_shop():
     with open("static/shop.html", "r") as file:
         return file.read()
+    
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
@@ -52,6 +56,7 @@ def get_db():
         yield conn
     finally:
         conn.close()
+
 
 # JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "secret_key")  # Use the environment variable
@@ -122,10 +127,12 @@ class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
 
+from pydantic import Field
+
 class CartItemResponse(BaseModel):
     id: int
-    cart_id: int
-    product_id: int
+    cartId: int = Field(alias='cart_id')
+    productId: int = Field(alias='product_id')
     quantity: int
     name: str
     price: float
@@ -160,6 +167,7 @@ class OrderItemResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # Routes
 @app.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends(get_db)):
@@ -180,6 +188,7 @@ def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.post("/login")
 def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/login")
@@ -194,6 +203,33 @@ def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get
             data={"sub": db_user["email"]}, expires_delta=access_token_expires
         )
         return {"access_token": access_token, "token_type": "bearer"}
+    
+
+# Dependency to get current user
+async def get_current_user(token: str = Depends(oauth2_scheme), db: psycopg2.extensions.connection = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    with db.cursor() as cursor:
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        if user is None:
+            raise credentials_exception
+        return user
+
+
+@app.get("/users/me", response_model=UserResponse)
+def get_current_user(current_user: dict = Depends(get_current_user)):
+    return current_user
 
 @app.get("/users/{user_id}", response_model=UserResponse)
 def read_user(user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
@@ -204,6 +240,7 @@ def read_user(user_id: int, db: psycopg2.extensions.connection = Depends(get_db)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return user
+
 
 @app.post("/categories", response_model=CategoryResponse)
 def create_category(category: CategoryCreate, db: psycopg2.extensions.connection = Depends(get_db)):
@@ -216,6 +253,7 @@ def create_category(category: CategoryCreate, db: psycopg2.extensions.connection
         new_category = cursor.fetchone()
         db.commit()
         return new_category
+    
 
 @app.get("/categories", response_model=List[CategoryResponse])
 def get_categories(db: psycopg2.extensions.connection = Depends(get_db)):
@@ -223,6 +261,7 @@ def get_categories(db: psycopg2.extensions.connection = Depends(get_db)):
         cursor.execute("SELECT * FROM categories")
         categories = cursor.fetchall()
         return categories
+
 
 @app.post("/products", response_model=ProductResponse)
 def create_product(product: ProductCreate, db: psycopg2.extensions.connection = Depends(get_db)):
@@ -236,6 +275,7 @@ def create_product(product: ProductCreate, db: psycopg2.extensions.connection = 
         new_product = cursor.fetchone()
         db.commit()
         return new_product
+    
 
 @app.get("/products", response_model=List[ProductResponse])
 def get_products(db: psycopg2.extensions.connection = Depends(get_db)):
@@ -244,6 +284,7 @@ def get_products(db: psycopg2.extensions.connection = Depends(get_db)):
         cursor.execute("SELECT * FROM products")
         products = cursor.fetchall()
         return products
+    
 
 # Route to get the user's cart
 @app.get("/cart", response_model=List[CartItemResponse])
@@ -258,8 +299,20 @@ def get_cart(user_id: int, db: psycopg2.extensions.connection = Depends(get_db))
             WHERE c.user_id = %s
         """, (user_id,))
         cart_items = cursor.fetchall()
+        # Convert RealDictRow to regular dict and handle Decimal
+        cart_items = [
+            {
+                'name': item['name'],
+                'price': float(item['price']),
+                'id': item['id'],
+                'cart_id': item['cart_id'],
+                'product_id': item['product_id'],
+                'quantity': item['quantity'],
+            }
+            for item in cart_items
+        ]
         print(cart_items)
-        return cart_items  # Convert RealDictRow to dict
+        return cart_items
 
 # Route to add an item to the user's cart
 @app.post("/cart/items", response_model=CartItemResponse)
@@ -294,6 +347,7 @@ def add_cart_item(item: CartItemCreate, user_id: int, db: psycopg2.extensions.co
         
         db.commit()
         return new_item_with_product
+    
 
 @app.post("/orders", response_model=OrderResponse)
 def create_order(order: OrderCreate, db: psycopg2.extensions.connection = Depends(get_db)):
@@ -307,6 +361,7 @@ def create_order(order: OrderCreate, db: psycopg2.extensions.connection = Depend
         new_order = cursor.fetchone()
         db.commit()
         return new_order
+    
 
 # Function to create an access token
 def create_access_token(data: dict, expires_delta: timedelta):
@@ -351,6 +406,7 @@ def drop_all_tables(db: psycopg2.extensions.connection):
     except Exception as e:
         db.rollback()
         print(f"Error dropping tables: {e}")
+
 
 def create_tables(db: psycopg2.extensions.connection):
     try:
@@ -440,6 +496,8 @@ def create_tables(db: psycopg2.extensions.connection):
     except Exception as e:
         db.rollback()
         print(f"Error creating tables: {e}")
+
+
 def insert_sample_data(db: psycopg2.extensions.connection):
     print("Inserting sample data into categories and products...")
     cursor = db.cursor()
@@ -528,6 +586,78 @@ def insert_sample_data(db: psycopg2.extensions.connection):
             'toys_id': categories['Игрушки'],
             'kids_clothing_id': categories['Детская одежда']
         })
+
+        cursor.execute("""
+                -- Заполнение таблицы пользователей
+                INSERT INTO users (name, email, password, role)
+                VALUES
+                    ('TEST', 'W@W', 'w', 'покупатель'),
+                    ('Иван Иванов', 'ivanov@example.com', 'password123', 'покупатель'),
+                    ('Мария Петрова', 'petrova@example.com', 'password123', 'покупатель'),
+                    ('Алексей Сидоров', 'sidorov@example.com', 'password123', 'администратор'),
+                    ('Наталья Смирнова', 'smirnova@example.com', 'password123', 'покупатель'),
+                    ('Дмитрий Кузнецов', 'kuznetsov@example.com', 'password123', 'покупатель'),
+                    ('Ольга Васильева', 'vasilieva@example.com', 'password123', 'покупатель'),
+                    ('Екатерина Зайцева', 'zaytseva@example.com', 'password123', 'покупатель'),
+                    ('Игорь Беляев', 'belyaev@example.com', 'password123', 'покупатель'),
+                    ('Марина Орлова', 'orlova@example.com', 'password123', 'покупатель'),
+                    ('Юрий Михайлов', 'mikhaylov@example.com', 'password123', 'администратор'),
+                    ('Татьяна Федорова', 'fedorova@example.com', 'password123', 'покупатель'),
+                    ('Константин Соловьев', 'solovyov@example.com', 'password123', 'покупатель');
+
+                -- Заполнение таблицы корзин
+                INSERT INTO cart (user_id)
+                VALUES
+                    (1), (2), (3), (4), (5),
+                    (6), (7), (8), (9), (10);
+
+                -- Заполнение таблицы товаров в корзине
+                INSERT INTO cart_items (cart_id, product_id, quantity)
+                VALUES
+                    (1, 1, 1), (1, 2, 2), (2, 3, 1), (2, 4, 3), (3, 5, 1),
+                    (3, 6, 1), (4, 7, 1), (4, 8, 2), (5, 9, 1), (6, 10, 1),
+                    (7, 11, 2), (8, 12, 1);
+
+                -- Заполнение таблицы заказов
+                INSERT INTO orders (user_id, total_amount, status, payment_id)
+                VALUES
+                    (1, 55000.00, 'в обработке', 'payment_1'),
+                    (2, 70000.00, 'отправлен', 'payment_2'),
+                    (3, 30000.00, 'доставлен', 'payment_3'),
+                    (4, 12000.00, 'в обработке', 'payment_4'),
+                    (5, 10000.00, 'отправлен', 'payment_5'),
+                    (6, 8000.00, 'доставлен', 'payment_6'),
+                    (7, 25000.00, 'в обработке', 'payment_7'),
+                    (8, 20000.00, 'отправлен', 'payment_8'),
+                    (9, 15000.00, 'доставлен', 'payment_9'),
+                    (10, 40000.00, 'в обработке', 'payment_10');
+
+                -- Заполнение таблицы товаров в заказе
+                INSERT INTO order_items (order_id, product_id, quantity, price)
+                VALUES
+                    (1, 1, 1, 50000.00), (1, 2, 2, 1500.00),
+                    (2, 3, 1, 35000.00), (2, 4, 3, 1500.00),
+                    (3, 5, 1, 3000.00), (3, 6, 1, 4000.00),
+                    (4, 7, 1, 2000.00), (4, 8, 2, 1000.00),
+                    (5, 9, 1, 8000.00), (6, 10, 1, 1500.00),
+                    (7, 11, 2, 1500.00), (8, 12, 1, 12000.00);
+
+                -- Заполнение таблицы логов пользователей
+                INSERT INTO user_logs (user_id, action, product_id)
+                VALUES
+                    (1, 'Добавил товар в корзину', 1), (1, 'Перешел к оформлению заказа', NULL),
+                    (2, 'Просмотрел товар', 3), (2, 'Добавил товар в корзину', 4),
+                    (3, 'Удалил товар из корзины', 5), (4, 'Перешел к оформлению заказа', NULL),
+                    (5, 'Добавил товар в корзину', 7), (6, 'Просмотрел товар', 9),
+                    (7, 'Добавил товар в корзину', 11), (8, 'Удалил товар из корзины', 12);
+
+                -- Заполнение таблицы рекомендаций
+                INSERT INTO recommendations (user_id, product_id)
+                VALUES
+                    (1, 2), (1, 3), (2, 4), (3, 5),
+                    (4, 6), (5, 7), (6, 8), (7, 9),
+                    (8, 10), (9, 11), (10, 12);
+""")
 
         db.commit()
         print("Sample data inserted successfully!")

@@ -60,13 +60,31 @@
         <ul id="cart-items"></ul>
         <p>Total: <span id="cart-total">₽0</span></p>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         // Cart items and total
         let cartItems = [];
         let cartTotal = 0;
         let userId = null; // Store the logged-in user's ID
+
+        window.addEventListener('load', function() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            } else {
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+                // Fetch products or other data here
+            }
+        });
+
+        // Retrieve userId from localStorage
+        userId = localStorage.getItem('user_id');
+
+        if (!userId) {
+            window.location.href = '/login';
+        } else {
+            loadCart();
+        }
 
         function saveCartToLocalStorage() {
             console.log("Saving cart to localStorage...");
@@ -108,9 +126,12 @@
 
                 // Map the response data to the cartItems array
                 cartItems = response.data.map(item => ({
-                    name: item.name,       // Ensure this matches the backend response
-                    price: item.price,     // Ensure this matches the backend response
-                    productId: item.product_id,
+                    id: item.id,
+                    cartId: item.cartId,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    name: item.name,
+                    price: item.price,
                 }));
 
                 saveCartToLocalStorage(); // Save to localStorage
@@ -176,13 +197,6 @@
             });
         }
 
-        // Simulate user login (replace with actual login logic)
-        function loginUser(id) {
-            console.log("Simulating user login...");
-            userId = id;
-            loadCart(); // Load the user's cart after login
-        }
-
         
         function loadCartFromLocalStorage() {
             console.log("Loading cart from localStorage...");
@@ -193,9 +207,6 @@
             }
         }
         
-        // Example: Simulate a user logging in with ID 1
-        loginUser(1);
-
         fetchShopItems();
         // Load cart items from localStorage when the page loads
         loadCartFromLocalStorage();

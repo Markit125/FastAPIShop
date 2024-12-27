@@ -12,34 +12,29 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, Dict, List
 
-# FastAPI app
+
 app = FastAPI()
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (for development only)
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
 
-# Serve static files (e.g., CSS, JS, images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     with open("static/index.html", "r") as file:
         return file.read()
-    
 
 @app.get("/login", response_class=HTMLResponse)
 async def read_login():
     with open("static/login.html", "r") as file:
         return file.read()
     
-
 @app.get("/shop", response_class=HTMLResponse)
 async def read_shop():
     with open("static/shop.html", "r") as file:
@@ -60,10 +55,6 @@ async def read_thank_you():
     with open("static/thank-you.html", "r") as file:
         return file.read()
 
-# Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
-
-# Function to get a database connection
 def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
@@ -72,18 +63,15 @@ def get_db():
         conn.close()
 
 
-# JWT Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "secret_key")  # Use the environment variable
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db/shop")
+SECRET_KEY = os.getenv("SECRET_KEY", "secret_key")  
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# OAuth2 Scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Pydantic models for request and response
+
 class UserCreate(BaseModel):
     name: str
     email: str
@@ -182,17 +170,17 @@ class OrderItemResponse(BaseModel):
 
 
 class PaymentInfo(BaseModel):
-    pan: str  # Primary Account Number
-    cvv: str  # Card Verification Value
-    expiration_date: str  # Expiration date in MM/YY format
-    user_id: int  # User ID for the purchase
-    total_amount: float  # Total amount of the purchase
+    pan: str  
+    cvv: str  
+    expiration_date: str  
+    user_id: int  
+    total_amount: float  
 
-# Routes
+
 @app.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends(get_db)):
     hashed_password = pwd_context.hash(user.password)
-    email = user.email.lower()  # Convert email to lowercase
+    email = user.email.lower()
     with db.cursor() as cursor:
         cursor.execute(
             "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, 'покупатель') RETURNING id, name, email, role, created_at",
@@ -205,7 +193,7 @@ def register_user(user: UserCreate, db: psycopg2.extensions.connection = Depends
 
 @app.post("/login")
 def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get_db)):
-    email = user.email.lower()  # Convert email to lowercase
+    email = user.email.lower()
     with db.cursor() as cursor:
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         db_user = cursor.fetchone()
@@ -223,14 +211,11 @@ def login_user(user: UserLogin, db: psycopg2.extensions.connection = Depends(get
 async def create_purchase(payment_info: PaymentInfo, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/purchase")
     try:
-        # Validate the expiration date
         expiration_date = payment_info.expiration_date
         if not expiration_date or len(expiration_date) != 5 or expiration_date[2] != '/':
             raise HTTPException(status_code=400, detail="Invalid expiration date format. Use MM/YY.")
 
-        # Create a new order
         with db.cursor() as cursor:
-            # Insert the order
             cursor.execute(
                 "INSERT INTO orders (user_id, total_amount, status, payment_id, created_at) "
                 "VALUES (%s, %s, %s, %s, %s) RETURNING id",
@@ -238,7 +223,6 @@ async def create_purchase(payment_info: PaymentInfo, db: psycopg2.extensions.con
             )
             order_id = cursor.fetchone()["id"]
 
-            # Fetch the user's cart items
             cursor.execute("""
                 SELECT ci.product_id, ci.quantity, p.price
                 FROM cart_items ci
@@ -248,7 +232,6 @@ async def create_purchase(payment_info: PaymentInfo, db: psycopg2.extensions.con
             """, (payment_info.user_id,))
             cart_items = cursor.fetchall()
 
-            # Insert order items
             for item in cart_items:
                 cursor.execute(
                     "INSERT INTO order_items (order_id, product_id, quantity, price) "
@@ -256,7 +239,6 @@ async def create_purchase(payment_info: PaymentInfo, db: psycopg2.extensions.con
                     (order_id, item["product_id"], item["quantity"], item["price"]),
                 )
 
-            # Clear the user's cart
             cursor.execute("DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM cart WHERE user_id = %s)", (payment_info.user_id,))
 
             db.commit()
@@ -268,10 +250,8 @@ async def create_purchase(payment_info: PaymentInfo, db: psycopg2.extensions.con
         raise HTTPException(status_code=500, detail="An error occurred while processing the purchase.")
     
 
-# Dependency to get current user
 async def get_current_user(token: str = Depends(oauth2_scheme), db: psycopg2.extensions.connection = Depends(get_db)):
     credentials_exception = HTTPException(
-        # status_code=status.HTTP_401_UNAUTHORIZED,
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
@@ -354,7 +334,6 @@ def get_products(db: psycopg2.extensions.connection = Depends(get_db)):
 async def get_recommendations(user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/recommendations")
     with db.cursor() as cursor:
-        # Get recommended product IDs for the user
         cursor.execute("""
             SELECT p.*
             FROM recommendations r
@@ -365,7 +344,6 @@ async def get_recommendations(user_id: int, db: psycopg2.extensions.connection =
         return recommended_products
     
 
-# Route to get the user's cart
 @app.get("/cart", response_model=List[CartItemResponse])
 def get_cart(user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/cart")
@@ -378,7 +356,6 @@ def get_cart(user_id: int, db: psycopg2.extensions.connection = Depends(get_db))
             WHERE c.user_id = %s
         """, (user_id,))
         cart_items = cursor.fetchall()
-        # Convert RealDictRow to regular dict and handle Decimal
         cart_items = [
             {
                 'name': item['name'],
@@ -393,19 +370,16 @@ def get_cart(user_id: int, db: psycopg2.extensions.connection = Depends(get_db))
         print(cart_items)
         return cart_items
 
-# Route to add an item to the user's cart
 @app.post("/cart/items", response_model=CartItemResponse)
 def add_cart_item(item: CartItemCreate, user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/cart/items")
     with db.cursor() as cursor:
-        # Get or create the user's cart
         cursor.execute("SELECT id FROM cart WHERE user_id = %s", (user_id,))
         cart = cursor.fetchone()
         if not cart:
             cursor.execute("INSERT INTO cart (user_id, created_at) VALUES (%s, NOW()) RETURNING id", (user_id,))
             cart = cursor.fetchone()
         
-        # Add the item to the cart
         cursor.execute("""
             INSERT INTO cart_items (cart_id, product_id, quantity)
             VALUES (%s, %s, %s)
@@ -413,11 +387,9 @@ def add_cart_item(item: CartItemCreate, user_id: int, db: psycopg2.extensions.co
         """, (cart["id"], item.product_id, item.quantity))
         new_item = cursor.fetchone()
         
-        # Fetch product name and price
         cursor.execute("SELECT name, price FROM products WHERE id = %s", (new_item["product_id"],))
         product = cursor.fetchone()
         
-        # Combine the data
         new_item_with_product = {
             **new_item,
             "name": product["name"],
@@ -432,7 +404,6 @@ def add_cart_item(item: CartItemCreate, user_id: int, db: psycopg2.extensions.co
 def remove_cart_item(cart_item_id: int, user_id: int, db: psycopg2.extensions.connection = Depends(get_db)):
     print("/cart/items/delete")
     with db.cursor() as cursor:
-        # Verify that the cart item belongs to the user
         cursor.execute("""
             SELECT ci.id
             FROM cart_items ci
@@ -443,7 +414,6 @@ def remove_cart_item(cart_item_id: int, user_id: int, db: psycopg2.extensions.co
         if not item:
             raise HTTPException(status_code=404, detail="Cart item not found")
         
-        # Delete the cart item
         cursor.execute("DELETE FROM cart_items WHERE id = %s", (cart_item_id,))
         db.commit()
     return {"detail": "Cart item removed successfully"}
@@ -463,7 +433,6 @@ def create_order(order: OrderCreate, db: psycopg2.extensions.connection = Depend
         return new_order
     
 
-# Function to create an access token
 def create_access_token(data: dict, expires_delta: timedelta):
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta
@@ -476,15 +445,11 @@ def create_access_token(data: dict, expires_delta: timedelta):
 def startup_event():
     db = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
-        pass
-        # # Drop all tables
-        # drop_all_tables(db)
-
-        # # Recreate tables
-        # create_tables(db)
-
-        # # Insert sample data (optional)
-        # insert_sample_data(db)
+        # pass
+        
+        drop_all_tables(db)
+        create_tables(db)
+        insert_sample_data(db)
     finally:
         db.close()
 
@@ -513,7 +478,7 @@ def create_tables(db: psycopg2.extensions.connection):
     try:
         with db.cursor() as cursor:
 
-            # Recreate the users table with the correct schema
+            
             cursor.execute("""
                 CREATE TABLE users (
                     id SERIAL PRIMARY KEY,
@@ -525,7 +490,7 @@ def create_tables(db: psycopg2.extensions.connection):
                 );
             """)
 
-            # Create other tables (categories, products, etc.)
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS categories (
                     id SERIAL PRIMARY KEY,
@@ -631,7 +596,7 @@ def insert_sample_data(db: psycopg2.extensions.connection):
                pwd_context.hash("password123"),
                pwd_context.hash("password123")))
 
-        # Insert parent categories first
+        
         cursor.execute("""
             INSERT INTO categories (name, parent_id)
             VALUES
@@ -643,7 +608,7 @@ def insert_sample_data(db: psycopg2.extensions.connection):
             ON CONFLICT (name) DO NOTHING;
         """)
 
-        # Fetch the IDs of the parent categories
+        
         cursor.execute("""
             SELECT id, name FROM categories WHERE name IN (
                 'Электроника', 'Одежда', 'Обувь', 'Товары для дома', 'Товары для детей'
@@ -651,7 +616,7 @@ def insert_sample_data(db: psycopg2.extensions.connection):
         """)
         parent_categories = {row['name']: row['id'] for row in cursor.fetchall()}
 
-        # Insert child categories with correct parent_id references
+        
         cursor.execute("""
             INSERT INTO categories (name, parent_id)
             VALUES
@@ -676,11 +641,11 @@ def insert_sample_data(db: psycopg2.extensions.connection):
             'kids_goods_id': parent_categories['Товары для детей']
         })
 
-        # Fetch the IDs of all categories (parent and child)
+        
         cursor.execute("SELECT id, name FROM categories;")
         categories = {row['name']: row['id'] for row in cursor.fetchall()}
 
-        # Insert products with correct category_id references
+        
         cursor.execute("""
             INSERT INTO products (name, description, price, stock, category_id, attributes)
             VALUES
